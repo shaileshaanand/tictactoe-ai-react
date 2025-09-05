@@ -161,10 +161,16 @@ export const generateNextMoves = (gameState: GameState) => {
   return nextMoves;
 };
 
+const cache = new Map<string, number>();
+
 export const getScore: (
   gameState: GameState,
   turn: GameCellNotNull,
 ) => number = (gameState, turn) => {
+  const hash = getGameStateHash(gameState);
+  if (cache.has(hash)) {
+    return cache.get(hash) as number;
+  }
   const status = getGameStatus(gameState);
   if ("winner" in status) {
     if (status.winner === "O") {
@@ -196,6 +202,7 @@ export const getScore: (
       score = moveScore;
     }
   }
+  cache.set(hash, score);
   return score;
 };
 
