@@ -137,7 +137,10 @@ export const getGameStatus: (gameState: GameState) =>
 
 export const getGameStateHash = (gameState: GameState) => {
   const { state } = gameState;
-  return `${state[0][0]}${state[0][1]}${state[0][2]}${state[1][0]}${state[1][1]}${state[1][2]}${state[2][0]}${state[2][1]}${state[2][2]}${gameState.turn}`;
+  return `${state[0][0]}${state[0][1]}${state[0][2]}${state[1][0]}${state[1][1]}${state[1][2]}${state[2][0]}${state[2][1]}${state[2][2]}${gameState.turn}`.replaceAll(
+    "null",
+    " ",
+  );
 };
 
 export const generateNextMoves = (gameState: GameState) => {
@@ -158,13 +161,13 @@ export const generateNextMoves = (gameState: GameState) => {
   return nextMoves;
 };
 
-const getScore: (gameState: GameState, turn: GameCellNotNull) => number = (
+export const getScore: (
   gameState: GameState,
   turn: GameCellNotNull,
-) => {
+) => number = (gameState, turn) => {
   const status = getGameStatus(gameState);
   if ("winner" in status) {
-    if (status.winner === turn) {
+    if (status.winner === "O") {
       return 10;
     } else {
       return -10;
@@ -173,9 +176,27 @@ const getScore: (gameState: GameState, turn: GameCellNotNull) => number = (
   if ("status" in status && status.status === "DRAW") {
     return 0;
   }
-  return generateNextMoves(gameState)
-    .map((m) => getScore(m, turn === "X" ? "O" : "X"))
-    .reduce((a, b) => a + b, 0);
+  const nextMoves = generateNextMoves(gameState);
+  const nextTurn = turn === "O" ? "X" : "O";
+
+  if (turn === "O") {
+    let score = -Infinity;
+    for (const move of nextMoves) {
+      const moveScore = getScore(move, nextTurn);
+      if (moveScore > score) {
+        score = moveScore;
+      }
+    }
+    return score;
+  }
+  let score = Infinity;
+  for (const move of nextMoves) {
+    const moveScore = getScore(move, nextTurn);
+    if (moveScore < score) {
+      score = moveScore;
+    }
+  }
+  return score;
 };
 
 export const findBestNextMove: (gameState: GameState) => GameState = (
@@ -183,8 +204,16 @@ export const findBestNextMove: (gameState: GameState) => GameState = (
 ) => {
   const possibleNextMoves = generateNextMoves(gameState);
   const scores = possibleNextMoves.map((moveState) => {
-    return getScore(moveState, moveState.turn);
+    const score = getScore(moveState, moveState.turn);
+
+    return score;
   });
   console.log({ scores });
-  return gameState;
+  const maxScore = Math.max(...scores);
+  const maxScoreIndex = scores.indexOf(maxScore);
+
+  if (!possibleNextMoves[maxScoreIndex]) {
+    throw new Error("No possible next moves");
+  }
+  return possibleNextMoves[maxScoreIndex];
 };
